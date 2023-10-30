@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-out
+  labels:
+    io.kompose.service: jaeger
+spec:
+  type: NodePort
+  ports:
+  - port: 16686
+    targetPort: 16686
+  selector:
+    io.kompose.service: jaeger
