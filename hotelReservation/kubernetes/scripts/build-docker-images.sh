@@ -2,6 +2,7 @@
 
 cd $(dirname $0)/..
 
+echo "Current working directory before setting the ROOT_FOLDER: $(pwd)"
 
 EXEC="docker buildx"
 
@@ -12,6 +13,7 @@ TAG="latest"
 # ENTER THE ROOT FOLDER
 cd ../
 ROOT_FOLDER=$(pwd)
+echo "ROOT_FOLDER: $(pwd)"
 $EXEC create --name mybuilder --use
 
 for i in hotelreservation #frontend geo profile rate recommendation reserve search user #uncomment to build multiple images
