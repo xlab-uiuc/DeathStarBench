@@ -28,10 +28,13 @@ spec:
       containers:
         - command:
             - recommendation
-          image: igorrudyk1/hotelreservation:latest
+          image: yinfangchen/hotelreservation:latest
           name: hotel-reserv-recommendation
           ports:
             - containerPort: 8085
+          env:
+            - name: JAEGER_SAMPLE_RATIO
+              value: "1"
           resources:
             requests:
               cpu: 100m
