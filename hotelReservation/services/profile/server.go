@@ -130,6 +130,11 @@ func (s *Server) GetProfiles(ctx context.Context, req *pb.Request) (*pb.Result, 
 	}
 	memSpan, _ := opentracing.StartSpanFromContext(ctx, "memcached_get_profile")
 	memSpan.SetTag("span.kind", "client")
+	
+	memSpan.SetTag("peer.service", "memcached")
+	memSpan.SetTag("peer.hostname", "memcached-profile")
+	memSpan.SetTag("peer.port", "memcached-port-11211")
+
 	resMap, err := s.MemcClient.GetMulti(hotelIds)
 	memSpan.Finish()
 	if err != nil && err != memcache.ErrCacheMiss {
