@@ -40,9 +40,15 @@ spec:
           volumeMounts:
             - mountPath: /data/db
               name: rate
+            - mountPath: /docker-entrypoint-initdb.d
+              name: init-script
       restartPolicy: Always
       volumes:
         - name: rate
           persistentVolumeClaim:
             claimName: rate-pvc
+        - name: init-script
+          configMap:
+            name: mongo-rate-script
+
 status: {}

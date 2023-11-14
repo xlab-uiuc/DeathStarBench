@@ -25,6 +25,12 @@ type RatePlan struct {
 }
 
 func initializeDatabase(url string) *mgo.Session {
+	adminUsername := "admin"
+    adminPassword := "admin"
+
+    // Add credentials to the MongoDB connection URL
+    url = "mongodb://" + adminUsername + ":" + adminPassword + "@" + url
+
 	session, err := mgo.Dial(url)
 	if err != nil {
 		log.Panic().Msg(err.Error())
@@ -32,7 +38,7 @@ func initializeDatabase(url string) *mgo.Session {
 	// defer session.Close()
 	log.Info().Msg("New session successfull...")
 
-	log.Info().Msg("Generating test data...")
+	log.Info().Msg("Generating test data...")	
 	c := session.DB("rate-db").C("inventory")
 	count, err := c.Find(&bson.M{"hotelId": "1"}).Count()
 	if err != nil {
