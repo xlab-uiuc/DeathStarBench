@@ -42,6 +42,8 @@ spec:
               name: rate
             - mountPath: /docker-entrypoint-initdb.d
               name: init-script
+            - mountPath: /scripts
+              name: downgrade-script
       restartPolicy: Always
       volumes:
         - name: rate
@@ -50,5 +52,8 @@ spec:
         - name: init-script
           configMap:
             name: mongo-rate-script
+        - name: downgrade-script
+          configMap:
+            name: downgrade-privileges-script
 
 status: {}
