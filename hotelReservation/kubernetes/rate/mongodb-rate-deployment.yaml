@@ -43,8 +43,7 @@ spec:
             - mountPath: /docker-entrypoint-initdb.d
               name: init-script
             - mountPath: /scripts
-              name: downgrade-script
-      restartPolicy: Always
+              name: failure-script 
       volumes:
         - name: rate
           persistentVolumeClaim:
@@ -52,8 +51,8 @@ spec:
         - name: init-script
           configMap:
             name: mongo-rate-script
-        - name: downgrade-script
+        - name: failure-script
           configMap:
-            name: downgrade-privileges-script
+            name: failure-admin
 
 status: {}
