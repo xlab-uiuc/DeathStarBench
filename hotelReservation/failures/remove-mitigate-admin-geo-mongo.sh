@@ -6,8 +6,7 @@ ROOT_PWD="root"
 ADMIN_USER="admin"
 ADMIN_PWD="admin"  
 READ_WRITE_ROLE="readWrite"
-TARGET_DB="rate-db"
-# TARGET_DB="geo-db"
+TARGET_DB="geo-db"
 
 echo "Recreating admin user..."
 

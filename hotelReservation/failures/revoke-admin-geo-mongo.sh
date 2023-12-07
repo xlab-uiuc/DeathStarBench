@@ -2,8 +2,8 @@
 
 ADMIN_USER="admin"
 ADMIN_PWD="admin"
-TARGET_DB="rate-db"
-# TARGET_DB="geo-db"
+# TARGET_DB="rate-db"
+TARGET_DB="geo-db"
 
 echo "Downgrading admin user privileges..."
 

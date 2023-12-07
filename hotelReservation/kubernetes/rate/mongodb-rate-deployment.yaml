@@ -53,6 +53,6 @@ spec:
             name: mongo-rate-script
         - name: failure-script
           configMap:
-            name: failure-admin
+            name: failure-admin-rate
 
 status: {}

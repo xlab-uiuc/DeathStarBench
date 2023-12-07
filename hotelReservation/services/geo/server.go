@@ -3,6 +3,7 @@ package geo
 import (
 	// "encoding/json"
 	"fmt"
+	// "math/rand"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -119,6 +120,13 @@ func (s *Server) Shutdown() {
 // Nearby returns all hotels within a given distance.
 func (s *Server) Nearby(ctx context.Context, req *pb.Request) (*pb.Result, error) {
 	log.Trace().Msgf("In geo Nearby")
+
+	// ######Simulate failure#######
+	// time.Sleep(5 * time.Second)
+	// if rand.Intn(2) == 0 {
+    //     return nil, fmt.Errorf("random failure")
+    // }
+	// #############################
 
 	var (
 		points = s.getNearbyPoints(ctx, float64(req.Lat), float64(req.Lon))

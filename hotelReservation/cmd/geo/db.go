@@ -15,6 +15,12 @@ type point struct {
 }
 
 func initializeDatabase(url string) *mgo.Session {
+	adminUsername := "admin"
+    adminPassword := "admin"
+
+    // Add credentials to the MongoDB connection URL
+    url = "mongodb://" + adminUsername + ":" + adminPassword + "@" + url
+	
 	session, err := mgo.Dial(url)
 	if err != nil {
 		log.Panic().Msg(err.Error())

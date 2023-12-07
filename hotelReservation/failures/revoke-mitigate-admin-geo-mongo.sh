@@ -3,8 +3,8 @@
 ADMIN_USER="admin"
 ADMIN_PWD="admin"
 
-TARGET_DB="rate-db"
-# TARGET_DB="geo-db"
+# TARGET_DB="rate-db"
+TARGET_DB="geo-db"
 READ_WRITE_ROLE="readWrite"
 
 echo "Restoring readWrite privilege to the $ADMIN_USER user for the $TARGET_DB database..."
