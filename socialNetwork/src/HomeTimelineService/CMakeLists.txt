@@ -12,6 +12,7 @@ target_include_directories(
     /usr/local/include/jaegertracing
     /usr/local/include/hiredis
     /usr/local/include/sw
+    ${OPENTELEMETRY_CPP_INCLUDE_DIRS}
 )
 
 target_link_libraries(
@@ -28,6 +29,7 @@ target_link_libraries(
     /usr/local/lib/libhiredis_ssl.a
     /usr/local/lib/libredis++.a
     OpenSSL::SSL
+    ${OPENTELEMETRY_CPP_LIBRARIES}
 )
 
 install(TARGETS HomeTimelineService DESTINATION ./)

@@ -10,6 +10,7 @@ target_include_directories(
     ${LIBMEMCACHED_INCLUDE_DIR}
     ${MONGOC_INCLUDE_DIRS}
     /usr/local/include/jaegertracing
+    ${OPENTELEMETRY_CPP_INCLUDE_DIRS}
 )
 
 target_link_libraries(
@@ -23,6 +24,7 @@ target_link_libraries(
     Boost::log
     Boost::log_setup
     jaegertracing
+    ${OPENTELEMETRY_CPP_LIBRARIES}
 )
 
 install(TARGETS UserMentionService DESTINATION ./)

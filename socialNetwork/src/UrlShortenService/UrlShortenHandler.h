@@ -10,6 +10,11 @@
 #include <libmemcached/util.h>
 #include <bson/bson.h>
 
+#include <opentelemetry/trace/provider.h>
+#include <opentelemetry/trace/tracer.h>
+#include <opentelemetry/trace/span.h>
+#include <opentelemetry/trace/scope.h>
+
 #include "../../gen-cpp/UrlShortenService.h"
 #include "../../gen-cpp/social_network_types.h"
 #include "../logger.h"
@@ -70,6 +75,11 @@ void UrlShortenHandler::ComposeUrls(
     int64_t req_id,
     const std::vector<std::string> &urls,
     const std::map<std::string, std::string> &carrier) {
+    
+  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
+  auto ospan = tracer->StartSpan("compose_urls_server");
+  auto scoped_ospan = tracer->WithActiveSpan(ospan);
+  // opentelemetry::trace::Scope(tracer->StartSpan("compose_urls_server"));
 
   // Initialize a span
   TextMapReader reader(carrier);
@@ -116,6 +126,9 @@ void UrlShortenHandler::ComposeUrls(
           auto mongo_span = opentracing::Tracer::Global()->StartSpan(
               "url_mongo_insert_client",
               { opentracing::ChildOf(&span->context()) });
+          
+          auto mongo_ospan = tracer->StartSpan("url_mongo_insert_client");
+          auto mongo_scoped_ospan = tracer->WithActiveSpan(mongo_ospan);
 
           mongoc_bulk_operation_t *bulk;
           bson_t *doc;
@@ -148,6 +161,8 @@ void UrlShortenHandler::ComposeUrls(
           mongoc_collection_destroy(collection);
           mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
           mongo_span->Finish();
+
+          mongo_ospan->End();
         });
 
   }
@@ -163,6 +178,8 @@ void UrlShortenHandler::ComposeUrls(
 
   _return = target_urls;
   span->Finish();
+
+  ospan->End();
 
 }
 

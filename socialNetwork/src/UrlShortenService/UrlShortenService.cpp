@@ -11,6 +11,7 @@
 #include "UrlShortenHandler.h"
 #include "nlohmann/json.hpp"
 
+
 using apache::thrift::protocol::TBinaryProtocolFactory;
 using apache::thrift::server::TThreadedServer;
 using apache::thrift::transport::TFramedTransportFactory;
@@ -19,6 +20,7 @@ using namespace social_network;
 
 static memcached_pool_st* memcached_client_pool;
 static mongoc_client_pool_t* mongodb_client_pool;
+
 
 void sigintHandler(int sig) {
   if (memcached_client_pool != nullptr) {
@@ -29,10 +31,14 @@ void sigintHandler(int sig) {
   }
   exit(EXIT_SUCCESS);
 }
+
 int main(int argc, char* argv[]) {
   signal(SIGINT, sigintHandler);
   init_logger();
   SetUpTracer("config/jaeger-config.yml", "url-shorten-service");
+  // Set up otel tracer
+  SetUpOpenTelemetryTracer("url-shorten-service");
+  
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) != 0) {
     exit(EXIT_FAILURE);
