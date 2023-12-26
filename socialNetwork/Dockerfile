@@ -141,7 +141,7 @@ RUN cd /social-network-microservices \
     && make -j`nproc` \
     && make install
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # Copy compiled C++ binaries and dependencies
 COPY --from=builder /usr/local/bin/* /usr/local/bin/
@@ -152,11 +152,13 @@ COPY --from=builder /usr/local/lib/* /usr/local/lib/
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         openssl \
+        libssl1.0.0 \
         ca-certificates \
         libsasl2-2 \
         libmemcached11 \
         libmemcachedutil2 \
         iproute2 \
+        libcurl3-gnutls \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /social-network-microservices
