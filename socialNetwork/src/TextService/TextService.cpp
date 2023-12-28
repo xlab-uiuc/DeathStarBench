@@ -20,6 +20,8 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigintHandler);
   init_logger();
   SetUpTracer("config/jaeger-config.yml", "text-service");
+  // Set up otel tracer
+  SetUpOpenTelemetryTracer("text-service");
 
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) == 0) {

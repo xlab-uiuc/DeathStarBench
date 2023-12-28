@@ -3,20 +3,20 @@
 #ifndef SOCIAL_NETWORK_MICROSERVICES_TRACING_H
 #define SOCIAL_NETWORK_MICROSERVICES_TRACING_H
 
-#include <string>
 #include <yaml-cpp/yaml.h>
 #include <jaegertracing/Tracer.h>
 
-// #include <opentelemetry/exporters/otlp/otlp_http_exporter.h>
-// #include <opentelemetry/exporters/memory/in_memory_span_exporter.h>
-#include "opentelemetry/exporters/ostream/span_exporter_factory.h"
-#include "opentelemetry/sdk/trace/exporter.h"
-#include "opentelemetry/sdk/trace/processor.h"
-#include "opentelemetry/sdk/trace/simple_processor_factory.h"
-#include "opentelemetry/sdk/trace/tracer_provider_factory.h"
-// #include <opentelemetry/sdk/trace/simple_processor.h>
-// #include <opentelemetry/sdk/trace/samplers/always_on.h>
-#include "opentelemetry/trace/provider.h"
+#include <opentelemetry/exporters/ostream/span_exporter_factory.h>
+#include <opentelemetry/sdk/trace/exporter.h>
+#include <opentelemetry/sdk/trace/processor.h>
+#include <opentelemetry/sdk/trace/simple_processor_factory.h>
+#include <opentelemetry/sdk/trace/tracer_provider_factory.h>
+#include <opentelemetry/trace/provider.h>
+
+#include <opentelemetry/context/propagation/text_map_propagator.h>
+#include <opentelemetry/context/propagation/global_propagator.h>
+#include <opentelemetry/trace/propagation/http_trace_context.h>
+#include <opentelemetry/trace/propagation/jaeger.h>
 
 #include <opentracing/propagation.h>
 #include <string>
@@ -49,6 +49,26 @@ class TextMapReader : public opentracing::TextMapReader {
   const std::map<std::string, std::string>& _text_map;
 };
 
+
+class OtelTextMapReader : public opentelemetry::context::propagation::TextMapCarrier {
+public:
+    explicit OtelTextMapReader(const std::map<std::string, std::string> &text_map)
+        : text_map_(text_map) {}
+
+    opentelemetry::nostd::string_view Get(opentelemetry::nostd::string_view key) const noexcept override {
+        auto it = text_map_.find(std::string(key));
+        if (it != text_map_.end()) {
+            return it->second;
+        }
+        return "";
+    }
+
+    void Set(opentelemetry::nostd::string_view key, opentelemetry::nostd::string_view value) noexcept override {}
+
+private:
+    const std::map<std::string, std::string> &text_map_;
+};
+
 class TextMapWriter : public opentracing::TextMapWriter {
  public:
   explicit TextMapWriter(std::map<std::string, std::string> &text_map)
@@ -62,6 +82,44 @@ class TextMapWriter : public opentracing::TextMapWriter {
  private:
   std::map<std::string, std::string>& _text_map;
 };
+
+class OtelTextMapWriter : public opentelemetry::context::propagation::TextMapCarrier {
+public:
+    explicit OtelTextMapWriter(std::map<std::string, std::string> &text_map)
+        : text_map_(text_map) {}
+
+    opentelemetry::nostd::string_view Get(opentelemetry::nostd::string_view key) const noexcept override {
+        return "";
+    }
+
+    void Set(opentelemetry::nostd::string_view key, opentelemetry::nostd::string_view value) noexcept override {
+        text_map_[std::string(key)] = std::string(value);
+    }
+
+private:
+    std::map<std::string, std::string> &text_map_;
+};
+
+// class OtelTextMapCarrier : public opentelemetry::context::propagation::TextMapCarrier {
+// public:
+//     explicit OtelTextMapCarrier(std::map<std::string, std::string> &text_map)
+//         : text_map_(text_map) {}
+
+//     opentelemetry::nostd::string_view Get(opentelemetry::nostd::string_view key) const noexcept override {
+//         auto it = text_map_.find(std::string(key));
+//         if (it != text_map_.end()) {
+//             return it->second;
+//         }
+//         return "";
+//     }
+
+//     void Set(opentelemetry::nostd::string_view key, opentelemetry::nostd::string_view value) noexcept override {
+//         text_map_[std::string(key)] = std::string(value);
+//     }
+
+// private:
+//     std::map<std::string, std::string> &text_map_;
+// };
 
 void SetUpTracer(
     const std::string &config_file_path,
@@ -95,6 +153,7 @@ void SetUpTracer(
 
 }
 
+
 void SetUpOpenTelemetryTracer(const std::string &service) {
     // Create OTLP HTTP exporter
     // // auto exporter = std::unique_ptr<opentelemetry::sdk::trace::SpanExporter>(
@@ -126,6 +185,16 @@ void SetUpOpenTelemetryTracer(const std::string &service) {
 
     // Set as global tracer provider
     opentelemetry::trace::Provider::SetTracerProvider(provider);
+
+    // opentelemetry::context::propagation::GlobalTextMapPropagator::SetGlobalPropagator(
+    //     opentelemetry::nostd::shared_ptr<opentelemetry::context::propagation::TextMapPropagator>(
+    //         new opentelemetry::trace::propagation::HttpTraceContext())
+    // );
+
+    opentelemetry::context::propagation::GlobalTextMapPropagator::SetGlobalPropagator(
+        opentelemetry::nostd::shared_ptr<opentelemetry::context::propagation::TextMapPropagator>(
+            new opentelemetry::trace::propagation::JaegerPropagator())
+    );
 }
 
 } //namespace social_network

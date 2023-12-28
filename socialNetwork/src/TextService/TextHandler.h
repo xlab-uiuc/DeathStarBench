@@ -6,6 +6,13 @@
 #include <regex>
 #include <string>
 
+#include <opentelemetry/trace/provider.h>
+#include <opentelemetry/trace/tracer.h>
+#include <opentelemetry/trace/span.h>
+#include <opentelemetry/trace/span_startoptions.h>
+#include <opentelemetry/context/propagation/global_propagator.h>
+#include <opentelemetry/context/propagation/text_map_propagator.h>
+
 #include "../../gen-cpp/TextService.h"
 #include "../../gen-cpp/UrlShortenService.h"
 #include "../../gen-cpp/UserMentionService.h"
@@ -41,6 +48,19 @@ TextHandler::TextHandler(
 void TextHandler::ComposeText(
     TextServiceReturn &_return, int64_t req_id, const std::string &text,
     const std::map<std::string, std::string> &carrier) {
+  opentelemetry::trace::StartSpanOptions options;
+  OtelTextMapReader otel_carrier_reader(carrier);
+  // Extract the context using the global propagator
+  auto prop         = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+  auto orig_ctx     = opentelemetry::context::RuntimeContext::GetCurrent();
+  auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
+  options.parent    = opentelemetry::trace::GetSpan(prev_ctx)->GetContext();
+ 
+  auto tracer       = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("text-service");
+  auto ospan        = tracer->StartSpan("compose_text_server", options);
+  auto scoped_ospan = tracer->WithActiveSpan(ospan);
+  auto current_context = opentelemetry::context::RuntimeContext::GetCurrent();
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -71,6 +91,16 @@ void TextHandler::ComposeText(
   }
 
   auto shortened_urls_future = std::async(std::launch::async, [&]() {
+    auto parent_context = opentelemetry::context::RuntimeContext::Attach(current_context);
+    auto url_ospan = tracer->StartSpan("compose_urls_client");
+    auto url_scoped_ospan = tracer->WithActiveSpan(url_ospan);
+
+    auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
+    std::map<std::string, std::string> url_text_map;
+    OtelTextMapWriter url_otel_writer(url_text_map);
+    auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+    prop->Inject(url_otel_writer, new_ctx);
+
     auto url_span = opentracing::Tracer::Global()->StartSpan(
         "compose_urls_client", {opentracing::ChildOf(&span->context())});
 
@@ -99,6 +129,16 @@ void TextHandler::ComposeText(
   });
 
   auto user_mention_future = std::async(std::launch::async, [&]() {
+    auto parent_context = opentelemetry::context::RuntimeContext::Attach(current_context);
+    auto user_mention_ospan = tracer->StartSpan("compose_user_mentions_client");
+    auto user_mention_scoped_ospan = tracer->WithActiveSpan(user_mention_ospan);
+
+    auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
+    std::map<std::string, std::string> user_mention_text_map;
+    OtelTextMapWriter user_mention_otel_writer(user_mention_text_map);
+    auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+    prop->Inject(user_mention_otel_writer, new_ctx);
+
     auto user_mention_span = opentracing::Tracer::Global()->StartSpan(
         "compose_user_mentions_client",
         {opentracing::ChildOf(&span->context())});
@@ -166,6 +206,7 @@ void TextHandler::ComposeText(
   _return.text = updated_text;
   _return.urls = target_urls;
   span->Finish();
+  ospan->End();
 }
 
 }  // namespace social_network

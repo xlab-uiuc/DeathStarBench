@@ -14,6 +14,10 @@
 #include <opentelemetry/trace/tracer.h>
 #include <opentelemetry/trace/span.h>
 #include <opentelemetry/trace/scope.h>
+#include <opentelemetry/trace/span_startoptions.h>
+#include <opentelemetry/trace/propagation/http_trace_context.h>
+#include <opentelemetry/context/runtime_context.h>
+#include <opentelemetry/context/propagation/global_propagator.h>
 
 #include "../../gen-cpp/UrlShortenService.h"
 #include "../../gen-cpp/social_network_types.h"
@@ -70,16 +74,27 @@ std::string UrlShortenHandler::_GenRandomStr(int length) {
   _thread_lock->unlock();
   return return_str;
 }
+
 void UrlShortenHandler::ComposeUrls(
     std::vector<Url> &_return,
     int64_t req_id,
     const std::vector<std::string> &urls,
     const std::map<std::string, std::string> &carrier) {
-    
-  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
-  auto ospan = tracer->StartSpan("compose_urls_server");
+  // for (const auto& pair : carrier) {
+  //   LOG(info) << pair.first << ": " << pair.second << "\n";
+  // }
+  opentelemetry::trace::StartSpanOptions options;
+  OtelTextMapReader otel_carrier_reader(carrier);
+  // Extract the context using the global propagator
+  auto prop         = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+  auto orig_ctx     = opentelemetry::context::RuntimeContext::GetCurrent();
+  auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
+  options.parent    = opentelemetry::trace::GetSpan(prev_ctx)->GetContext();
+ 
+  auto tracer       = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
+  auto ospan        = tracer->StartSpan("compose_urls_server", options);
   auto scoped_ospan = tracer->WithActiveSpan(ospan);
-  // opentelemetry::trace::Scope(tracer->StartSpan("compose_urls_server"));
+  auto current_context = opentelemetry::context::RuntimeContext::GetCurrent();
 
   // Initialize a span
   TextMapReader reader(carrier);
@@ -127,6 +142,7 @@ void UrlShortenHandler::ComposeUrls(
               "url_mongo_insert_client",
               { opentracing::ChildOf(&span->context()) });
           
+          auto parent_context = opentelemetry::context::RuntimeContext::Attach(current_context);
           auto mongo_ospan = tracer->StartSpan("url_mongo_insert_client");
           auto mongo_scoped_ospan = tracer->WithActiveSpan(mongo_ospan);
 
@@ -164,8 +180,8 @@ void UrlShortenHandler::ComposeUrls(
 
           mongo_ospan->End();
         });
-
   }
+
 
   if (!urls.empty()) {
     try {
@@ -178,9 +194,8 @@ void UrlShortenHandler::ComposeUrls(
 
   _return = target_urls;
   span->Finish();
-
+  
   ospan->End();
-
 }
 
 void UrlShortenHandler::GetExtendedUrls(
