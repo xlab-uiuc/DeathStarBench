@@ -91,10 +91,16 @@ void UrlShortenHandler::ComposeUrls(
   auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
   options.parent    = opentelemetry::trace::GetSpan(prev_ctx)->GetContext();
  
-  auto tracer       = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
-  auto ospan        = tracer->StartSpan("compose_urls_server", options);
-  auto scoped_ospan = tracer->WithActiveSpan(ospan);
-  auto current_context = opentelemetry::context::RuntimeContext::GetCurrent();
+  auto tracer           = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
+  auto ospan            = tracer->StartSpan("compose_urls_server", options);
+  auto scoped_ospan     = tracer->WithActiveSpan(ospan);
+  auto current_context  = opentelemetry::context::RuntimeContext::GetCurrent();
+  auto span_ctx         = ospan->GetContext();
+
+  auto logger       = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger("url-shorten-service");
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kDebug, "*******Test222*****", span_ctx.trace_id(),
+                      span_ctx.span_id(), span_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
 
   // Initialize a span
   TextMapReader reader(carrier);

@@ -30,7 +30,6 @@ target_link_libraries(
     /usr/local/lib/libjaegertracing.so
     /usr/local/lib/libSimpleAmqpClient.so
     ${OPENTELEMETRY_CPP_LIBRARIES}
-
 )
 
 install(TARGETS ComposePostService DESTINATION ./)

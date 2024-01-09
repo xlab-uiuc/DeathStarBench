@@ -4,6 +4,9 @@
 #include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/TServerSocket.h>
 
+#include <opentelemetry/logs/provider.h>
+#include <opentelemetry/context/runtime_context.h>
+
 #include "../utils.h"
 #include "../utils_memcached.h"
 #include "../utils_mongodb.h"
@@ -38,6 +41,15 @@ int main(int argc, char* argv[]) {
   SetUpTracer("config/jaeger-config.yml", "url-shorten-service");
   // Set up otel tracer
   SetUpOpenTelemetryTracer("url-shorten-service");
+  SetUpOpenTelemetryLogger("url-shorten-service");
+
+  // auto prop         = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+  // auto orig_ctx     = opentelemetry::context::RuntimeContext::GetCurrent();
+  // auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
+
+  auto logger = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger(
+        "url-shorten-service");
+  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
   
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) != 0) {
@@ -85,5 +97,10 @@ int main(int argc, char* argv[]) {
       std::make_shared<TBinaryProtocolFactory>());
 
   LOG(info) << "Starting the url-shorten-service server...";
+  
+  auto ctx  = tracer->GetCurrentSpan()->GetContext();
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kDebug, "*******Test11111*******\n Starting the url-shorten-service server...", ctx.trace_id(),
+                      ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
   server.serve();
 }

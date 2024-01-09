@@ -12,7 +12,13 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     wget \
     gnupg \
-    libcurl4-gnutls-dev
+    libcurl4-gnutls-dev \
+    build-essential \
+    autoconf \
+    libtool \
+    pkg-config \
+    libsystemd-dev \
+    libc-ares-dev 
 
 # Add Kitware's GPG key
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
@@ -47,6 +53,25 @@ RUN wget https://github.com/protocolbuffers/protobuf/archive/refs/tags/v25.1.tar
     && tar zxf v25.1.tar.gz \
     && cd protobuf-25.1 \
     && cmake -Dprotobuf_DISABLE_RTTI=ON -Dprotobuf_WITH_ZLIB=ON -Dprotobuf_ABSL_PROVIDER=package -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS='-fPIC' -DCMAKE_CXX_FLAGS='-fPIC -std=gnu++11' -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 \
+    && cmake --build . --target install -- -j`nproc`
+
+# Dependency needed by grpc
+RUN wget --no-check-certificate https://c-ares.org/download/c-ares-1.25.0.tar.gz \
+    && tar zxf c-ares-1.25.0.tar.gz \
+    && cd c-ares-1.25.0 \
+    && cmake -DCMAKE_C_FLAGS='-fPIC' -DCMAKE_CXX_FLAGS='-fPIC -std=gnu++11' -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 \
+    && cmake --build . --target install -- -j`nproc`
+
+RUN wget https://github.com/google/re2/archive/refs/tags/2023-11-01.tar.gz \ 
+    && tar zxf 2023-11-01.tar.gz \
+    && cd re2-2023-11-01 \
+    && cmake -DCMAKE_C_FLAGS='-fPIC' -DCMAKE_CXX_FLAGS='-fPIC -std=gnu++11' -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 \
+    && cmake --build . --target install -- -j`nproc`
+
+RUN wget https://github.com/grpc/grpc/archive/refs/tags/v1.60.0.tar.gz \
+    && tar zxf v1.60.0.tar.gz \
+    && cd grpc-1.60.0 \
+    && cmake . -DgRPC_INSTALL=ON -DCMAKE_BUILD_TYPE=Release -DgRPC_PROTOBUF_PROVIDER=package -DgRPC_RE2_PROVIDER=package -DCMAKE_DISABLE_FIND_PACKAGE_systemd=ON -DgRPC_ZLIB_PROVIDER=package -DgRPC_SSL_PROVIDER=package -DgRPC_CARES_PROVIDER=package -DgRPC_ABSL_PROVIDER=package -DCMAKE_C_FLAGS='-fPIC' -DCMAKE_CXX_FLAGS='-fPIC -std=gnu++11' -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 \
     && cmake --build . --target install -- -j`nproc`
 
 # Download and extract OpenTelemetry C++ source
@@ -120,7 +145,7 @@ WORKDIR /tmp/opentelemetry-cpp
 # EOR
 
 RUN mkdir build && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DCMAKE_CXX_FLAGS='-std=gnu++11 -fPIC' -DWITH_OTLP_HTTP=ON -DWITH_BENCHMARK=OFF -DBUILD_TESTING=OFF -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 -DWITH_ABSEIL=ON \
+    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DCMAKE_CXX_FLAGS='-std=gnu++11 -fPIC' -DWITH_OTLP_HTTP=ON -DWITH_BENCHMARK=OFF -DBUILD_TESTING=OFF -DCMAKE_C_COMPILER=gcc-7 -DCMAKE_CXX_COMPILER=g++-7 -DWITH_ABSEIL=ON -DWITH_OTLP_GRPC=ON \
     && cmake --build . --target all -- -j`nproc` \
     && cmake --install .
 

@@ -1,5 +1,14 @@
 version: "3.9"
 services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    volumes:
+      - /ssd2/failure-decomposer/src/collector_config.yaml:/etc/otelcol-contrib/config.yaml
+      - /ssd2/failure-decomposer/src/otel_output.json:/tmp/otel_output.json
+    # ports:
+    #   - "4317:4317"
+    #   - "4318:4318"
+
   social-graph-service:
     # image: yinfangchen/social-network-microservices:latest
     image: yinfangchen/social-otel:test

@@ -101,12 +101,12 @@ void TextHandler::ComposeText(
     auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
     prop->Inject(url_otel_writer, new_ctx);
 
-    auto url_span = opentracing::Tracer::Global()->StartSpan(
-        "compose_urls_client", {opentracing::ChildOf(&span->context())});
+    // auto url_span = opentracing::Tracer::Global()->StartSpan(
+    //     "compose_urls_client", {opentracing::ChildOf(&span->context())});
 
-    std::map<std::string, std::string> url_writer_text_map;
-    TextMapWriter url_writer(url_writer_text_map);
-    opentracing::Tracer::Global()->Inject(url_span->context(), url_writer);
+    // std::map<std::string, std::string> url_writer_text_map;
+    // TextMapWriter url_writer(url_writer_text_map);
+    // opentracing::Tracer::Global()->Inject(url_span->context(), url_writer);
 
     auto url_client_wrapper = _url_client_pool->Pop();
     if (!url_client_wrapper) {
@@ -118,7 +118,8 @@ void TextHandler::ComposeText(
     std::vector<Url> _return_urls;
     auto url_client = url_client_wrapper->GetClient();
     try {
-      url_client->ComposeUrls(_return_urls, req_id, urls, url_writer_text_map);
+      // url_client->ComposeUrls(_return_urls, req_id, urls, url_writer_text_map);
+      url_client->ComposeUrls(_return_urls, req_id, urls, url_text_map);
     } catch (...) {
       LOG(error) << "Failed to upload urls to url-shorten-service";
       _url_client_pool->Remove(url_client_wrapper);
@@ -139,14 +140,14 @@ void TextHandler::ComposeText(
     auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
     prop->Inject(user_mention_otel_writer, new_ctx);
 
-    auto user_mention_span = opentracing::Tracer::Global()->StartSpan(
-        "compose_user_mentions_client",
-        {opentracing::ChildOf(&span->context())});
+    // auto user_mention_span = opentracing::Tracer::Global()->StartSpan(
+    //     "compose_user_mentions_client",
+    //     {opentracing::ChildOf(&span->context())});
 
-    std::map<std::string, std::string> user_mention_writer_text_map;
-    TextMapWriter user_mention_writer(user_mention_writer_text_map);
-    opentracing::Tracer::Global()->Inject(user_mention_span->context(),
-                                          user_mention_writer);
+    // std::map<std::string, std::string> user_mention_writer_text_map;
+    // TextMapWriter user_mention_writer(user_mention_writer_text_map);
+    // opentracing::Tracer::Global()->Inject(user_mention_span->context(),
+    //                                       user_mention_writer);
 
     auto user_mention_client_wrapper = _user_mention_client_pool->Pop();
     if (!user_mention_client_wrapper) {
@@ -158,9 +159,12 @@ void TextHandler::ComposeText(
     std::vector<UserMention> _return_user_mentions;
     auto user_mention_client = user_mention_client_wrapper->GetClient();
     try {
+      // user_mention_client->ComposeUserMentions(_return_user_mentions, req_id,
+      //                                          mention_usernames,
+      //                                          user_mention_writer_text_map);
       user_mention_client->ComposeUserMentions(_return_user_mentions, req_id,
                                                mention_usernames,
-                                               user_mention_writer_text_map);
+                                               user_mention_text_map);
     } catch (...) {
       LOG(error) << "Failed to upload user_mentions to user-mention-service";
       _user_mention_client_pool->Remove(user_mention_client_wrapper);

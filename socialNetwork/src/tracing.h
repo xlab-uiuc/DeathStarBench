@@ -7,6 +7,11 @@
 #include <jaegertracing/Tracer.h>
 
 #include <opentelemetry/exporters/ostream/span_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_exporter_options.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_factory.h>
+#include <opentelemetry/exporters/otlp/otlp_grpc_log_record_exporter_options.h>
+
 #include <opentelemetry/sdk/trace/exporter.h>
 #include <opentelemetry/sdk/trace/processor.h>
 #include <opentelemetry/sdk/trace/simple_processor_factory.h>
@@ -18,17 +23,28 @@
 #include <opentelemetry/trace/propagation/http_trace_context.h>
 #include <opentelemetry/trace/propagation/jaeger.h>
 
+#include <opentelemetry/exporters/ostream/log_record_exporter.h>
+#include <opentelemetry/logs/provider.h>
+#include <opentelemetry/sdk/logs/logger_provider_factory.h>
+#include <opentelemetry/sdk/logs/processor.h>
+#include <opentelemetry/sdk/logs/simple_log_record_processor_factory.h>
+
 #include <opentracing/propagation.h>
 #include <string>
 #include <map>
+#include <fstream>
 #include "logger.h"
 
 namespace sdktrace = opentelemetry::sdk::trace;
+namespace otlp     = opentelemetry::exporter::otlp;
 
 namespace social_network {
 
 using opentracing::expected;
 using opentracing::string_view;
+
+// opentelemetry::exporter::otlp::OtlpGrpcExporterOptions opts;
+// opentelemetry::exporter::otlp::OtlpGrpcLogRecordExporterOptions log_opts;
 
 class TextMapReader : public opentracing::TextMapReader {
  public:
@@ -153,8 +169,29 @@ void SetUpTracer(
 
 }
 
+void SetUpOpenTelemetryLogger(const std::string &service)
+{
+  otlp::OtlpGrpcLogRecordExporterOptions log_opts;
+  log_opts.endpoint = "otel-collector:4317"; // Use the gRPC endpoint of otel collector
+
+  // std::ofstream log_file("opentelemetry_logs.log");
+  // // Create ostream log exporter instance
+  // auto exporter = std::unique_ptr<opentelemetry::sdk::logs::LogRecordExporter>(
+  //       new opentelemetry::exporter::logs::OStreamLogRecordExporter(log_file));
+  // auto exporter = std::unique_ptr<opentelemetry::sdk::logs::LogRecordExporter>(
+  //       new opentelemetry::exporter::logs::OStreamLogRecordExporter);
+  auto exporter  = otlp::OtlpGrpcLogRecordExporterFactory::Create(log_opts);
+  auto processor = opentelemetry::sdk::logs::SimpleLogRecordProcessorFactory::Create(std::move(exporter));
+  std::shared_ptr<opentelemetry::logs::LoggerProvider> provider(
+      opentelemetry::sdk::logs::LoggerProviderFactory::Create(std::move(processor)));
+
+  // Set the global logger provider
+  opentelemetry::logs::Provider::SetLoggerProvider(provider);
+}
 
 void SetUpOpenTelemetryTracer(const std::string &service) {
+    otlp::OtlpGrpcExporterOptions trace_opts;
+    trace_opts.endpoint = "otel-collector:4317";
     // Create OTLP HTTP exporter
     // // auto exporter = std::unique_ptr<opentelemetry::sdk::trace::SpanExporter>(
     // //     new opentelemetry::exporters::otlp::OtlpGrpcExporter());
@@ -162,10 +199,9 @@ void SetUpOpenTelemetryTracer(const std::string &service) {
     // opts.url = "http://localhost:4318/v1/traces";
     // auto exporter = std::unique_ptr<sdktrace::SpanExporter>(
     //     new opentelemetry::exporter::otlp::OtlpHttpExporter(opts));
-
-    // memory exporter
-    // auto memory_exporter = std::unique_ptr<sdktrace::SpanExporter>(new opentelemetry::exporter::memory::InMemorySpanExporter);
-    auto exporter  = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create();
+    // std::ofstream trace_file("opentelemetry_traces.log");
+    // auto exporter  = opentelemetry::exporter::trace::OStreamSpanExporterFactory::Create(trace_file);
+    auto exporter  = otlp::OtlpGrpcExporterFactory::Create(trace_opts);
 
     // Create simple span processor
     auto processor = sdktrace::SimpleSpanProcessorFactory::Create(std::move(exporter));
@@ -178,8 +214,6 @@ void SetUpOpenTelemetryTracer(const std::string &service) {
     //     std::move(processor), resource, std::move(always_on_sampler));
 
     // Create tracer provider with the simple processor
-    // auto provider = std::shared_ptr<opentelemetry::trace::TracerProvider>(
-    //     new sdktrace::TracerProvider(std::move(processor)));
     std::shared_ptr<opentelemetry::trace::TracerProvider> provider =
       sdktrace::TracerProviderFactory::Create(std::move(processor));
 
