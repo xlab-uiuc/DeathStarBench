@@ -6,7 +6,9 @@ ports:
 
 container:
   command: PostStorageService
-  image: deathstarbench/social-network-microservices
+  # image: deathstarbench/social-network-microservices
+  image: yinfangchen/social-otel
+  imageVersion: test
   name: post-storage-service
   ports: 
   - containerPort: 9090
