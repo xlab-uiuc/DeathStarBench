@@ -4,6 +4,9 @@
 #include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/TServerSocket.h>
 
+#include <opentelemetry/logs/provider.h>
+#include <opentelemetry/context/runtime_context.h>
+
 #include "../utils.h"
 #include "../utils_memcached.h"
 #include "../utils_mongodb.h"
@@ -23,6 +26,15 @@ int main(int argc, char *argv[]) {
   init_logger();
 
   SetUpTracer("config/jaeger-config.yml", "user-service");
+
+  // Set up otel tracer
+  SetUpOpenTelemetryTracer("user-service");
+  SetUpOpenTelemetryLogger("user-service");
+  
+  auto logger = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger(
+        "user-service");
+  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("user-service");
+  auto ctx  = tracer->GetCurrentSpan()->GetContext();
 
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) != 0) {
@@ -61,6 +73,9 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   LOG(info) << "machine_id = " << machine_id;
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "machine_id = " + machine_id, ctx.trace_id(),
+                      ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
 
   std::mutex thread_lock;
 
@@ -71,6 +86,9 @@ int main(int argc, char *argv[]) {
   mongoc_client_t *mongodb_client = mongoc_client_pool_pop(mongodb_client_pool);
   if (!mongodb_client) {
     LOG(fatal) << "Failed to pop mongoc client";
+    logger->EmitLogRecord(opentelemetry::logs::Severity::kFatal, "Failed to pop mongoc client", ctx.trace_id(),
+                      ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
     return EXIT_FAILURE;
   }
   bool r = false;
@@ -78,6 +96,8 @@ int main(int argc, char *argv[]) {
     r = CreateIndex(mongodb_client, "user", "user_id", true);
     if (!r) {
       LOG(error) << "Failed to create mongodb index, try again";
+      logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to create mongodb index, try again", ctx.trace_id(), ctx.span_id(), ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
       sleep(1);
     }
   }
@@ -92,5 +112,7 @@ int main(int argc, char *argv[]) {
       std::make_shared<TFramedTransportFactory>(),
       std::make_shared<TBinaryProtocolFactory>());
   LOG(info) << "Starting the user-service server ...";
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "Starting the user-service server ...", ctx.trace_id(), ctx.span_id(), ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
   server.serve();
 }

@@ -5,9 +5,9 @@ services:
     volumes:
       - /ssd2/failure-decomposer/src/collector_config.yaml:/etc/otelcol-contrib/config.yaml
       - /ssd2/failure-decomposer/src/otel_output.json:/tmp/otel_output.json
-    # ports:
-    #   - "4317:4317"
-    #   - "4318:4318"
+    ports:
+      - "4317:4317"
+      - "4318:4318"
 
   social-graph-service:
     # image: yinfangchen/social-network-microservices:latest
@@ -145,7 +145,11 @@ services:
 
   url-shorten-mongodb:
     image: mongo:4.4.6
+    # image: mongo:6.0
     hostname: url-shorten-mongodb
+    # volumes:
+    #   - ./yf-test-mongod.conf:/etc/mongod.conf
+    # command: mongod --auth
     #    ports:
     #      - 27021:27017
     restart: always

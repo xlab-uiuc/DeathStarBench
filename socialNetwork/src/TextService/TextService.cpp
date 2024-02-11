@@ -22,6 +22,12 @@ int main(int argc, char *argv[]) {
   SetUpTracer("config/jaeger-config.yml", "text-service");
   // Set up otel tracer
   SetUpOpenTelemetryTracer("text-service");
+  SetUpOpenTelemetryLogger("text-service");
+
+  auto logger = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger(
+        "text-service");
+  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("text-service");
+  auto ctx  = tracer->GetCurrentSpan()->GetContext();
 
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) == 0) {
@@ -58,6 +64,9 @@ int main(int argc, char *argv[]) {
         std::make_shared<TBinaryProtocolFactory>());
 
     LOG(info) << "Starting the text-service server...";
+    logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "Starting the text-service server...", ctx.trace_id(),
+                      ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
     server.serve();
   } else
     exit(EXIT_FAILURE);

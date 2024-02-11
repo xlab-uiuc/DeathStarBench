@@ -194,6 +194,8 @@ void UrlShortenHandler::ComposeUrls(
       mongo_future.get();
     } catch (...) {
       LOG(error) << "Failed to upload shortened urls from MongoDB";
+      logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to upload shortened urls from MongoDB", span_ctx.trace_id(), span_ctx.span_id(), span_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
       throw;
     }
   }

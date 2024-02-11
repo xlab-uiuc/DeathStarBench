@@ -4,6 +4,9 @@
 #include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/TServerSocket.h>
 
+#include <opentelemetry/logs/provider.h>
+#include <opentelemetry/context/runtime_context.h>
+
 #include "../utils.h"
 #include "../utils_memcached.h"
 #include "../utils_mongodb.h"
@@ -34,6 +37,13 @@ int main(int argc, char* argv[]) {
   signal(SIGINT, sigintHandler);
   init_logger();
   SetUpTracer("config/jaeger-config.yml", "user-mention-service");
+  SetUpOpenTelemetryTracer("user-mention-service");
+  SetUpOpenTelemetryLogger("user-mention-service");
+
+  auto logger = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger(
+        "user-mention-service");
+  auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("user-mention-service");
+  auto ctx  = tracer->GetCurrentSpan()->GetContext();
 
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) != 0) {
@@ -66,5 +76,8 @@ int main(int argc, char* argv[]) {
                          std::make_shared<TBinaryProtocolFactory>());
 
   LOG(info) << "Starting the user-mention-service server...";
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "Starting the user-mention-service server...", ctx.trace_id(),
+                      ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
   server.serve();
 }

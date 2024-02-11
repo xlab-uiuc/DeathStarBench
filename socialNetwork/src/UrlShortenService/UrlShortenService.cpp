@@ -50,7 +50,8 @@ int main(int argc, char* argv[]) {
   auto logger = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger(
         "url-shorten-service");
   auto tracer = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("url-shorten-service");
-  
+  auto ctx  = tracer->GetCurrentSpan()->GetContext();
+
   json config_json;
   if (load_config_file("config/service-config.json", &config_json) != 0) {
     exit(EXIT_FAILURE);
@@ -74,6 +75,9 @@ int main(int argc, char* argv[]) {
   mongoc_client_t* mongodb_client = mongoc_client_pool_pop(mongodb_client_pool);
   if (!mongodb_client) {
     LOG(fatal) << "Failed to pop mongoc client";
+    logger->EmitLogRecord(opentelemetry::logs::Severity::kFatal, "Failed to pop mongoc client", 
+                      ctx.trace_id(), ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
     return EXIT_FAILURE;
   }
   bool r = false;
@@ -81,6 +85,9 @@ int main(int argc, char* argv[]) {
     r = CreateIndex(mongodb_client, "url-shorten", "shortened_url", true);
     if (!r) {
       LOG(error) << "Failed to create mongodb index, try again";
+      logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to create mongodb index, try again", 
+                      ctx.trace_id(), ctx.span_id(), ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
       sleep(1);
     }
   }
@@ -98,8 +105,7 @@ int main(int argc, char* argv[]) {
 
   LOG(info) << "Starting the url-shorten-service server...";
   
-  auto ctx  = tracer->GetCurrentSpan()->GetContext();
-  logger->EmitLogRecord(opentelemetry::logs::Severity::kDebug, "*******Test11111*******\n Starting the url-shorten-service server...", ctx.trace_id(),
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "*******Test11111*******\n Starting the url-shorten-service server...", ctx.trace_id(),
                       ctx.span_id(), ctx.trace_flags(),
                       opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
   server.serve();
