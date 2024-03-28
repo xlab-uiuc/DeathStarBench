@@ -90,6 +90,10 @@ void UserMentionHandler::ComposeUserMentions(
       ServiceException se;
       se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
       se.message = "Failed to pop a client from memcached pool";
+      logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, span_ctx.trace_id(),
+                      span_ctx.span_id(), span_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
       throw se;
     }
 
@@ -166,6 +170,10 @@ void UserMentionHandler::ComposeUserMentions(
         se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
         se.message =
             "Cannot get usernames of request " + std::to_string(req_id);
+        logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, get_ospan_ctx.trace_id(),
+                      get_ospan_ctx.span_id(), get_ospan_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
         get_span->Finish();
         get_ospan->End();
         throw se;
@@ -193,12 +201,20 @@ void UserMentionHandler::ComposeUserMentions(
 
     // Find the rest in MongoDB
     if (!usernames_not_cached.empty()) {
+      auto find_ospan            = tracer->StartSpan("compose_user_mentions_mongo_find_client");
+      auto find_scoped_ospan     = tracer->WithActiveSpan(find_ospan);
+      auto find_ospan_ctx        = find_ospan->GetContext();
+
       mongoc_client_t *mongodb_client =
           mongoc_client_pool_pop(_mongodb_client_pool);
       if (!mongodb_client) {
         ServiceException se;
         se.errorCode = ErrorCode::SE_MONGODB_ERROR;
         se.message = "Failed to pop a client from MongoDB pool";
+        logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, find_ospan_ctx.trace_id(),
+                      find_ospan_ctx.span_id(), find_ospan_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
         throw se;
       }
 
@@ -208,6 +224,10 @@ void UserMentionHandler::ComposeUserMentions(
         ServiceException se;
         se.errorCode = ErrorCode::SE_MONGODB_ERROR;
         se.message = "Failed to create collection user from DB user";
+        logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, find_ospan_ctx.trace_id(),
+                      find_ospan_ctx.span_id(), find_ospan_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
         mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
         throw se;
       }
@@ -228,10 +248,6 @@ void UserMentionHandler::ComposeUserMentions(
       }
       bson_append_array_end(&query_child_0, &query_username_list);
       bson_append_document_end(query, &query_child_0);
-
-      auto find_ospan            = tracer->StartSpan("compose_user_mentions_memcached_get_client");
-      auto find_scoped_ospan     = tracer->WithActiveSpan(find_ospan);
-      auto find_ospan_ctx        = find_ospan->GetContext();
       
       auto find_span = opentracing::Tracer::Global()->StartSpan(
           "compose_user_mentions_mongo_find_client",
@@ -249,6 +265,10 @@ void UserMentionHandler::ComposeUserMentions(
           ServiceException se;
           se.errorCode = ErrorCode::SE_MONGODB_ERROR;
           se.message = "Attribute of MongoDB item is not complete";
+          logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, find_ospan_ctx.trace_id(),
+                      find_ospan_ctx.span_id(), find_ospan_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
           bson_destroy(query);
           mongoc_cursor_destroy(cursor);
           mongoc_collection_destroy(collection);
@@ -263,6 +283,10 @@ void UserMentionHandler::ComposeUserMentions(
           ServiceException se;
           se.errorCode = ErrorCode::SE_MONGODB_ERROR;
           se.message = "Attribute of MongoDB item is not complete";
+          logger->EmitLogRecord(opentelemetry::logs::Severity::kError, 
+                      se.message, find_ospan_ctx.trace_id(),
+                      find_ospan_ctx.span_id(), find_ospan_ctx.trace_flags(),
+                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
           bson_destroy(query);
           mongoc_cursor_destroy(cursor);
           mongoc_collection_destroy(collection);

@@ -431,17 +431,18 @@ void ComposePostHandler::_UploadUserTimelineHelper(
   auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
   options.parent    = opentelemetry::trace::GetSpan(prev_ctx)->GetContext();
  
-  auto tracer           = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("compose-post-service");
-  auto ospan            = tracer->StartSpan("write_user_timeline_client", options);
-  auto scoped_ospan     = tracer->WithActiveSpan(ospan);
-  auto current_context  = opentelemetry::context::RuntimeContext::GetCurrent();
-  auto span_ctx         = ospan->GetContext();
+  // Yf: comment this out first to make 1-1 mapping from request to graph
+  // auto tracer           = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("compose-post-service");
+  // auto ospan            = tracer->StartSpan("write_user_timeline_client", options);
+  // auto scoped_ospan     = tracer->WithActiveSpan(ospan);
+  // auto current_context  = opentelemetry::context::RuntimeContext::GetCurrent();
+  // auto span_ctx         = ospan->GetContext();
 
-  // auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
-  std::map<std::string, std::string> text_map;
-  OtelTextMapWriter otel_writer(text_map);
-  // auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
-  prop->Inject(otel_writer, current_context);
+  // // auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
+  // std::map<std::string, std::string> text_map;
+  // OtelTextMapWriter otel_writer(text_map);
+  // // auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+  // prop->Inject(otel_writer, current_context);
 
   TextMapReader reader(carrier);
   auto parent_span = opentracing::Tracer::Global()->Extract(reader);
@@ -462,10 +463,10 @@ void ComposePostHandler::_UploadUserTimelineHelper(
   }
   auto user_timeline_client = user_timeline_client_wrapper->GetClient();
   try {
-    // user_timeline_client->WriteUserTimeline(req_id, post_id, user_id, timestamp,
-    //                                         writer_text_map);
     user_timeline_client->WriteUserTimeline(req_id, post_id, user_id, timestamp,
-                                            text_map);
+                                            writer_text_map);
+    // user_timeline_client->WriteUserTimeline(req_id, post_id, user_id, timestamp,
+    //                                         text_map);
   } catch (...) {
     _user_timeline_client_pool->Remove(user_timeline_client_wrapper);
     throw;
@@ -473,7 +474,7 @@ void ComposePostHandler::_UploadUserTimelineHelper(
   _user_timeline_client_pool->Keepalive(user_timeline_client_wrapper);
 
   span->Finish();
-  ospan->End();
+  // ospan->End();
 }
 
 void ComposePostHandler::_UploadHomeTimelineHelper(
@@ -488,17 +489,18 @@ void ComposePostHandler::_UploadHomeTimelineHelper(
   auto prev_ctx     = prop->Extract(otel_carrier_reader, orig_ctx);
   options.parent    = opentelemetry::trace::GetSpan(prev_ctx)->GetContext();
  
-  auto tracer           = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("compose-post-service");
-  auto ospan            = tracer->StartSpan("write_home_timeline_client", options);
-  auto scoped_ospan     = tracer->WithActiveSpan(ospan);
-  auto current_context  = opentelemetry::context::RuntimeContext::GetCurrent();
-  auto span_ctx         = ospan->GetContext();
+  // Yf: comment this out first to make 1-1 mapping from request to graph
+  // auto tracer           = opentelemetry::trace::Provider::GetTracerProvider()->GetTracer("compose-post-service");
+  // auto ospan            = tracer->StartSpan("write_home_timeline_client", options);
+  // auto scoped_ospan     = tracer->WithActiveSpan(ospan);
+  // auto current_context  = opentelemetry::context::RuntimeContext::GetCurrent();
+  // auto span_ctx         = ospan->GetContext();
 
-  // auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
-  std::map<std::string, std::string> text_map;
-  OtelTextMapWriter otel_writer(text_map);
-  // auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
-  prop->Inject(otel_writer, current_context);
+  // // auto new_ctx = opentelemetry::context::RuntimeContext::GetCurrent();
+  // std::map<std::string, std::string> text_map;
+  // OtelTextMapWriter otel_writer(text_map);
+  // // auto prop = opentelemetry::context::propagation::GlobalTextMapPropagator::GetGlobalPropagator();
+  // prop->Inject(otel_writer, current_context);
 
   TextMapReader reader(carrier);
   auto parent_span = opentracing::Tracer::Global()->Extract(reader);
@@ -519,10 +521,10 @@ void ComposePostHandler::_UploadHomeTimelineHelper(
   }
   auto home_timeline_client = home_timeline_client_wrapper->GetClient();
   try {
-    // home_timeline_client->WriteHomeTimeline(req_id, post_id, user_id, timestamp,
-    //                                         user_mentions_id, writer_text_map);
     home_timeline_client->WriteHomeTimeline(req_id, post_id, user_id, timestamp,
-                                            user_mentions_id, text_map);
+                                            user_mentions_id, writer_text_map);
+    // home_timeline_client->WriteHomeTimeline(req_id, post_id, user_id, timestamp,
+    //                                         user_mentions_id, text_map);
   } catch (...) {
     _home_timeline_client_pool->Remove(home_timeline_client_wrapper);
     LOG(error) << "Failed to write home timeline to home-timeline-service";
@@ -531,7 +533,7 @@ void ComposePostHandler::_UploadHomeTimelineHelper(
   _home_timeline_client_pool->Keepalive(home_timeline_client_wrapper);
 
   span->Finish();
-  ospan->End();
+  // ospan->End();
 }
 
 void ComposePostHandler::ComposePost(

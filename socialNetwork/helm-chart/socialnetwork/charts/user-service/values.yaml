@@ -8,6 +8,7 @@ container:
   command: UserService
   # image: deathstarbench/social-network-microservices
   image: yinfangchen/social-otel
+  # image: yinfangchen/social-otel-regress
   imageVersion: test
   name: user-service
   ports: 

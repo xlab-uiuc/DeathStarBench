@@ -98,9 +98,9 @@ void UrlShortenHandler::ComposeUrls(
   auto span_ctx         = ospan->GetContext();
 
   auto logger       = opentelemetry::logs::Provider::GetLoggerProvider()->GetLogger("url-shorten-service");
-  logger->EmitLogRecord(opentelemetry::logs::Severity::kDebug, "*******Test222*****", span_ctx.trace_id(),
-                      span_ctx.span_id(), span_ctx.trace_flags(),
-                      opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
+  // logger->EmitLogRecord(opentelemetry::logs::Severity::kDebug, "*******Test222*****", span_ctx.trace_id(),
+  //                     span_ctx.span_id(), span_ctx.trace_flags(),
+  //                     opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
 
   // Initialize a span
   TextMapReader reader(carrier);
@@ -126,12 +126,19 @@ void UrlShortenHandler::ComposeUrls(
 
     mongo_future = std::async(
         std::launch::async, [&](){
+          auto parent_context = opentelemetry::context::RuntimeContext::Attach(current_context);
+          auto mongo_ospan          = tracer->StartSpan("url_mongo_insert_client");
+          auto mongo_scoped_ospan   = tracer->WithActiveSpan(mongo_ospan);
+          auto mongo_ospan_ctx      = mongo_ospan->GetContext();
+
           mongoc_client_t *mongodb_client = mongoc_client_pool_pop(
               _mongodb_client_pool);
           if (!mongodb_client) {
             ServiceException se;
             se.errorCode = ErrorCode::SE_MONGODB_ERROR;
             se.message = "Failed to pop a client from MongoDB pool";
+            logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to pop a client from MongoDB pool", mongo_ospan_ctx.trace_id(), mongo_ospan_ctx.span_id(), mongo_ospan_ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
             throw se;
           }
           auto collection = mongoc_client_get_collection(
@@ -140,6 +147,8 @@ void UrlShortenHandler::ComposeUrls(
             ServiceException se;
             se.errorCode = ErrorCode::SE_MONGODB_ERROR;
             se.message = "Failed to create collection user from DB user";
+            logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to create collection user from DB user", mongo_ospan_ctx.trace_id(), mongo_ospan_ctx.span_id(), mongo_ospan_ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
             mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
             throw se;
           }
@@ -147,10 +156,6 @@ void UrlShortenHandler::ComposeUrls(
           auto mongo_span = opentracing::Tracer::Global()->StartSpan(
               "url_mongo_insert_client",
               { opentracing::ChildOf(&span->context()) });
-          
-          auto parent_context = opentelemetry::context::RuntimeContext::Attach(current_context);
-          auto mongo_ospan = tracer->StartSpan("url_mongo_insert_client");
-          auto mongo_scoped_ospan = tracer->WithActiveSpan(mongo_ospan);
 
           mongoc_bulk_operation_t *bulk;
           bson_t *doc;
@@ -169,9 +174,17 @@ void UrlShortenHandler::ComposeUrls(
           ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
           if (!ret) {
             LOG(error) << "MongoDB error: "<< error.message;
+            std::string msg = "MongoDB error: " + std::string(error.message); 
+            logger->EmitLogRecord(opentelemetry::logs::Severity::kError, msg, mongo_ospan_ctx.trace_id(), mongo_ospan_ctx.span_id(), mongo_ospan_ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
+
             ServiceException se;
             se.errorCode = ErrorCode::SE_MONGODB_ERROR;
             se.message = "Failed to insert urls to MongoDB";
+
+            logger->EmitLogRecord(opentelemetry::logs::Severity::kError, "Failed to insert urls to MongoDB", mongo_ospan_ctx.trace_id(), mongo_ospan_ctx.span_id(), mongo_ospan_ctx.trace_flags(),
+            opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
+
             bson_destroy (&reply);
             mongoc_bulk_operation_destroy(bulk);
             mongoc_collection_destroy(collection);

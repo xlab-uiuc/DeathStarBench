@@ -8,6 +8,7 @@ container:
   command: SocialGraphService
   # image: deathstarbench/social-network-microservices
   image: yinfangchen/social-otel
+  # image: yinfangchen/social-otel-regress
   imageVersion: test
   name: social-graph-service
   ports: 

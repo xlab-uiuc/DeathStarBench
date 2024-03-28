@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 
   LOG(info) << "Starting the url-shorten-service server...";
   
-  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "*******Test11111*******\n Starting the url-shorten-service server...", ctx.trace_id(),
+  logger->EmitLogRecord(opentelemetry::logs::Severity::kInfo, "Starting the url-shorten-service server...", ctx.trace_id(),
                       ctx.span_id(), ctx.trace_flags(),
                       opentelemetry::common::SystemTimestamp(std::chrono::system_clock::now()));
   server.serve();

@@ -1,1 +1,1 @@
-{{ include "socialnetwork.templates.mongo.mongod.conf"  . }}
+{{ include "socialnetwork.templates.mongo.mongodnoconn.conf"  . }}
