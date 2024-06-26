@@ -59,6 +59,11 @@ spec:
           mountPath: {{ $configMap.mountPath }}
           subPath: {{ $configMap.name }}
         {{- end }}
+        {{- if $.Values.volumes }}
+        - name: tls-cert
+          mountPath: /etc/tls
+          readOnly: true
+        {{- end }}
         {{- end }}
       {{- end -}}
       {{- if $.Values.configMaps }}
@@ -66,6 +71,11 @@ spec:
       - name: {{ $.Values.name }}-config
         configMap:
           name: {{ $.Values.name }}
+      {{- end }}
+      {{- if $.Values.volumes }}
+      - name: tls-cert
+        secret:
+          secretName: mongodb-tls
       {{- end }}
       {{- if hasKey .Values "topologySpreadConstraints" }}
       topologySpreadConstraints:

@@ -18,3 +18,8 @@ configMaps:
   - name: mongod.conf
     mountPath: /social-network-microservices/config/mongod.conf
     value: mongod
+
+tls:
+  mode: disabled
+  certificateKeyFile: ""
+  CAFile: ""
