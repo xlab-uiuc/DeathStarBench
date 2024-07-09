@@ -28,7 +28,13 @@ configMaps:
     mountPath: /social-network-microservices/config/mongod.conf
     value: mongod
 
+# tls:
+#   mode: requireTLS
+#   certificateKeyFile: /etc/tls/tls.pem
+#   CAFile: /etc/tls/ca.crt
+
 tls:
-  mode: requireTLS
-  certificateKeyFile: /etc/tls/tls.pem
-  CAFile: /etc/tls/ca.crt
+  mode: disabled
+  certificateKeyFile: ""
+  CAFile: ""
+
